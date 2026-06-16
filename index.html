@@ -5,20 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Siber Tic Tac Toe</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
     <div class="container">
         <h1>SİBER TIC TAC TOE</h1>
-        
-        <div id="status" class="status">Mod Seçiniz</div>
+        <div id="status" class="status">Giriş Yapmanız Bekleniyor...</div>
 
-        <div id="menu" class="menu">
-            <button onclick="startLocalGame()">Yerel (2 Oyuncu)</button>
-            <button onclick="startAiGame()">Yapay Zeka</button>
-            <button onclick="startOnlineGame()">Online Eşleş</button>
+        <div id="auth-box" class="auth-box">
+            <input type="email" id="auth-email" placeholder="E-posta">
+            <input type="password" id="auth-password" placeholder="Şifre">
+            <div class="auth-buttons">
+                <button id="btn-login">Giriş Yap</button>
+                <button id="btn-register">Kayıt Ol</button>
+            </div>
+        </div>
+
+        <div id="menu" class="menu hidden">
+            <button id="btn-local">Yerel (2 Oyuncu)</button>
+            <button id="btn-ai">Yapay Zeka</button>
+            <hr style="border: 1px solid #3b4261; margin: 15px 0;">
+            
+            <div class="online-menu">
+                <input type="text" id="room-pin" placeholder="6 Haneli Oda Şifresi" maxlength="6">
+                <button id="btn-create-room">Özel Oda Kur</button>
+                <button id="btn-join-room">Odaya Katıl</button>
+            </div>
         </div>
 
         <div id="game-board" class="board hidden">
@@ -33,10 +45,9 @@
             <div class="cell" data-index="8"></div>
         </div>
 
-        <button id="reset-btn" class="hidden" onclick="resetGame()">Yeniden Başlat</button>
+        <button id="reset-btn" class="hidden">Ana Menüye Dön</button>
     </div>
 
-    <script src="app.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
-
