@@ -5,11 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Siber Tic Tac Toe</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
     <div class="container">
-        <h1>SİBER TIC TAC TOE</h1>
+        <div class="header-row">
+            <h1>SİBER TIC TAC TOE</h1>
+            <button id="btn-settings-toggle" class="icon-btn hidden">⚙️</button>
+        </div>
+        
         <div id="status" class="status">Giriş Yapmanız Bekleniyor...</div>
 
         <div id="auth-box" class="auth-box">
@@ -24,6 +29,8 @@
         <div id="menu" class="menu hidden">
             <button id="btn-local">Yerel (2 Oyuncu)</button>
             <button id="btn-ai">Yapay Zeka</button>
+            <button id="btn-leaderboard-toggle">🏆 En Hızlılar (Skor Tablosu)</button>
+            
             <hr style="border: 1px solid #3b4261; margin: 15px 0;">
             
             <div class="online-menu">
@@ -46,6 +53,27 @@
         </div>
 
         <button id="reset-btn" class="hidden">Ana Menüye Dön</button>
+    </div>
+
+    <div id="leaderboard-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>🏆 EN HIZLI KAZANANLAR</h2>
+            <p style="font-size: 0.8rem; color: #aaa; margin-bottom: 10px;">(Online modda en kısa sürede bitiren ilk 5 oyuncu)</p>
+            <ol id="leaderboard-list">
+                </ol>
+            <button id="btn-close-leaderboard">Kapat</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>⚙️ AYARLAR</h2>
+            <div class="setting-item">
+                <label for="setting-sound">Oyun İçi Sesler:</label>
+                <input type="checkbox" id="setting-sound" checked>
+            </div>
+            <button id="btn-close-settings">Kaydet ve Kapat</button>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>
