@@ -1,0 +1,18 @@
+{
+  "name": "Siber Tic Tac Toe",
+  "short_name": "SiberXOX",
+  "description": "Şifreli odalı ve yapay zekalı siber XOX oyunu.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0d0e15",
+  "theme_color": "#00ffcc",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1023/1023656.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+
