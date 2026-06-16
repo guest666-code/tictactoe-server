@@ -1,3 +1,4 @@
+/* --- GENEL SIFIRLAMA VE TEMEL AYARLAR --- */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -15,25 +16,107 @@ body {
     overflow: hidden;
 }
 
+/* --- ANA KAPSAYICI (OYUN KUTUSU) --- */
 .container {
     text-align: center;
     background: #161925;
     padding: 30px;
     border-radius: 16px;
     box-shadow: 0 0 20px rgba(0, 255, 204, 0.2);
+    width: 90%;
+    max-width: 400px;
+}
+
+/* --- ÜST BAŞLIK VE AYARLAR BUTONU DÜZENİ --- */
+.header-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    gap: 15px;
+    margin-bottom: 10px;
 }
 
 h1 {
-    font-size: 2rem;
-    margin-bottom: 20px;
+    font-size: 1.8rem;
     color: #00ffcc;
     text-shadow: 0 0 10px #00ffcc;
 }
 
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.icon-btn:hover {
+    transform: rotate(45deg);
+}
+
+/* --- DURUM METNİ --- */
 .status {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     margin-bottom: 20px;
     color: #ff007f;
+    font-weight: bold;
+    min-height: 27px;
+}
+
+/* --- GİRİŞ / KAYIT VE ONLINE MENÜ INPUTLARI --- */
+.auth-box, .online-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+input {
+    background: #1f2335;
+    border: 2px solid #3b4261;
+    color: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 1rem;
+    text-align: center;
+    outline: none;
+    transition: 0.3s;
+}
+
+input:focus {
+    border-color: #00ffcc;
+    box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+}
+
+/* --- BUTONLAR VE MENÜ ELEMANLARI --- */
+.auth-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.auth-buttons button {
+    flex: 1;
+    background: #1f2335;
+    color: #fff;
+    border: 2px solid #ff007f;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.auth-buttons button:hover {
+    background: #ff007f;
+    box-shadow: 0 0 15px #ff007f;
+    color: #fff;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .menu button, #reset-btn {
@@ -41,11 +124,12 @@ h1 {
     color: #fff;
     border: 2px solid #00ffcc;
     padding: 12px 24px;
-    margin: 8px;
     font-size: 1rem;
     border-radius: 8px;
     cursor: pointer;
     transition: 0.3s;
+    font-weight: bold;
+    width: 100%;
 }
 
 .menu button:hover, #reset-btn:hover {
@@ -54,13 +138,15 @@ h1 {
     box-shadow: 0 0 15px #00ffcc;
 }
 
+/* --- 3x3 OYUN TAHTASI VE HÜCRELER --- */
 .board {
     display: grid;
-    grid-template-columns: repeat(3, 100px);
+    grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 100px);
     gap: 10px;
     margin: 20px auto;
     justify-content: center;
+    max-width: 320px;
 }
 
 .cell {
@@ -74,14 +160,106 @@ h1 {
     font-weight: bold;
     cursor: pointer;
     transition: 0.2s;
+    user-select: none;
 }
 
 .cell:hover {
     background: #24283b;
 }
 
-.cell.X { color: #ff007f; text-shadow: 0 0 10px #ff007f; }
-.cell.O { color: #00ffff; text-shadow: 0 0 10px #00ffff; }
+/* X ve O Harflerinin Neon Efektleri */
+.cell.X { 
+    color: #ff007f; 
+    text-shadow: 0 0 10px #ff007f; 
+}
 
-.hidden { display: none !important; }
+.cell.O { 
+    color: #00ffff; 
+    text-shadow: 0 0 10px #00ffff; 
+}
 
+/* --- MODAL PENCERELER (AYARLAR & SKOR TABLOSU) --- */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(13, 14, 21, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: #161925;
+    border: 2px solid #00ffcc;
+    padding: 25px;
+    border-radius: 16px;
+    text-align: center;
+    width: 85%;
+    max-width: 350px;
+    box-shadow: 0 0 25px #00ffcc;
+}
+
+.modal-content h2 {
+    color: #00ffcc;
+    margin-bottom: 15px;
+    font-size: 1.4rem;
+    text-shadow: 0 0 5px #00ffcc;
+}
+
+/* Skor Listesi Düzeni */
+#leaderboard-list {
+    text-align: left;
+    margin: 15px 0;
+    padding-left: 20px;
+}
+
+#leaderboard-list li {
+    margin: 10px 0;
+    font-size: 1.1rem;
+    color: #fff;
+    border-bottom: 1px dashed #3b4261;
+    padding-bottom: 4px;
+}
+
+/* Ayarlar Seçenekleri Dizilimi */
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0;
+    font-size: 1.1rem;
+}
+
+/* Checkbox'ın siber temaya uyması için basit büyütme */
+.setting-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: #00ffcc;
+}
+
+.modal-content button {
+    background: #1f2335;
+    color: #fff;
+    border: 2px solid #ff007f;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 10px;
+    font-weight: bold;
+    transition: 0.3s;
+}
+
+.modal-content button:hover {
+    background: #ff007f;
+    box-shadow: 0 0 10px #ff007f;
+}
+
+/* --- GİZLEME YARDIMCI SINIFI --- */
+.hidden { 
+    display: none !important; 
+}
