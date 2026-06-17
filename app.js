@@ -1,6 +1,6 @@
 // --- FIREBASE V12 MODÜLER SDK IMPORTLARI ---
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 import { getDatabase, ref, set, get, update, onValue, remove, query, orderByChild, limitToFirst, push } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-database.js";
 
 // --- FIREBASE YAPILANDIRMASI (CONFIG) ---
@@ -27,14 +27,37 @@ let myRole = "X";
 let gameId = null;
 let gameActive = false;
 let userEmail = "";
-let gameStartTime = 0; // Kronometre başlangıcı
-
-// Tarayıcı hafızasından ses ayarını çek (Yoksa varsayılan olarak true yap)
+let gameStartTime = 0;
 let soundEnabled = localStorage.getItem("soundEnabled") !== "false";
+let roomListenerUnsubscribe = null; // Aktif dinleyiciyi kapatmak için
 
 // --- DOM ELEMANLARI ---
 const statusTxt = document.getElementById("status");
 const cells = document.querySelectorAll(".cell");
+const authBox = document.getElementById("auth-box");
+const menuBox = document.getElementById("menu");
+const gameBoardBox = document.getElementById("game-board");
+const resetBtn = document.getElementById("reset-btn");
+
+// --- GLOBAL OTURUM TAKİPÇİSİ (BUG 1 FİX) ---
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        userEmail = user.email;
+        statusTxt.innerText = `Hoş geldin, ${userEmail}`;
+        authBox.classList.add("hidden");
+        menuBox.classList.remove("hidden");
+        document.getElementById("btn-settings-toggle").classList.remove("hidden");
+        startNotificationLoop();
+    } else {
+        // Kullanıcı çıkış yaptıysa veya oturumu yoksa giriş ekranını göster
+        authBox.classList.remove("hidden");
+        menuBox.classList.add("hidden");
+        gameBoardBox.classList.add("hidden");
+        resetBtn.classList.add("hidden");
+        document.getElementById("btn-settings-toggle").classList.add("hidden");
+        statusTxt.innerText = "Giriş Yapmanız Bekleniyor...";
+    }
+});
 
 // --- SES EFEKTİ SİSTEMİ (Web Audio API) ---
 function playBeep(freq = 440, type = "sine") {
@@ -55,63 +78,51 @@ function playBeep(freq = 440, type = "sine") {
     }
 }
 
-// --- EVENT LISTENER'LAR (BUTON BAĞLANTI AYARLARI) ---
+// --- EVENT LISTENER'LAR ---
 document.getElementById("btn-register").addEventListener("click", handleRegister);
 document.getElementById("btn-login").addEventListener("click", handleLogin);
 document.getElementById("btn-local").addEventListener("click", () => initGameSetting("local"));
 document.getElementById("btn-ai").addEventListener("click", () => initGameSetting("ai"));
 document.getElementById("btn-create-room").addEventListener("click", createOnlineRoom);
 document.getElementById("btn-join-room").addEventListener("click", joinOnlineRoom);
-document.getElementById("reset-btn").addEventListener("click", resetGame);
+resetBtn.addEventListener("click", returnToMenu); // Artık sayfayı yenilemiyor, menüye güvenli dönüyor.
 cells.forEach(cell => cell.addEventListener("click", () => handleCellClick(cell)));
 
-// Modal Pencereleri Tetikleyicileri
 document.getElementById("btn-leaderboard-toggle").addEventListener("click", openLeaderboard);
 document.getElementById("btn-close-leaderboard").addEventListener("click", () => document.getElementById("leaderboard-modal").classList.add("hidden"));
 document.getElementById("btn-settings-toggle").addEventListener("click", openSettings);
 document.getElementById("btn-close-settings").addEventListener("click", saveSettings);
 
-// --- 1. KISIM: GİRİŞ VE KAYIT SİSTEMİ ---
+// --- GİRİŞ VE KAYIT SİSTEMİ ---
 function handleRegister() {
     const email = document.getElementById("auth-email").value;
     const password = document.getElementById("auth-password").value;
+    if(!email || !password) return alert("Lütfen alanları doldurun!");
     createUserWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            alert("Kayıt başarılı! Giriş yapılıyor...");
-            loginSuccess(userCredential.user);
-        }).catch((err) => alert("Kayıt Hatası: " + err.message));
+        .then(() => alert("Kayıt başarılı! Otomatik giriş yapılıyor..."))
+        .catch((err) => alert("Kayıt Hatası: " + err.message));
 }
 
 function handleLogin() {
     const email = document.getElementById("auth-email").value;
     const password = document.getElementById("auth-password").value;
+    if(!email || !password) return alert("Lütfen alanları doldurun!");
     signInWithEmailAndPassword(auth, email, password)
-        .then((userCredential) => {
-            loginSuccess(userCredential.user);
-        }).catch((err) => alert("Giriş Hatası: " + err.message));
+        .catch((err) => alert("Giriş Hatası: " + err.message));
 }
 
-function loginSuccess(user) {
-    userEmail = user.email;
-    statusTxt.innerText = `Hoş geldin, ${userEmail}`;
-    document.getElementById("auth-box").classList.add("hidden");
-    document.getElementById("menu").classList.remove("hidden");
-    document.getElementById("btn-settings-toggle").classList.remove("hidden");
-    
-    // PWA Bildirim Döngüsünü başlat
-    startNotificationLoop();
-}
-
-// --- 2. KISIM: MOD SEÇİMLERİ VE GENEL AYARLAR ---
+// --- MOD SEÇİMLERİ VE GENEL AYARLAR ---
 function initGameSetting(mode) {
     gameMode = mode;
     gameActive = true;
     board = ["", "", "", "", "", "", "", "", ""];
     currentPlayer = "X";
     isMyTurn = true;
-    document.getElementById("menu").classList.add("hidden");
-    document.getElementById("game-board").classList.remove("hidden");
-    document.getElementById("reset-btn").classList.remove("hidden");
+    gameStartTime = Date.now();
+    
+    menuBox.classList.add("hidden");
+    gameBoardBox.classList.remove("hidden");
+    resetBtn.classList.remove("hidden");
     
     if (mode === "local") statusTxt.innerText = "Sıra: OYUNCU X";
     if (mode === "ai") statusTxt.innerText = "Senin Sıran (X)";
@@ -129,31 +140,34 @@ function saveSettings() {
     document.getElementById("settings-modal").classList.add("hidden");
 }
 
-// --- 3. KISIM: SKOR TABLOSU (LEADERBOARD) ---
+// --- SKOR TABLOSU (BUG 2 FİX) ---
 function openLeaderboard() {
     const listContainer = document.getElementById("leaderboard-list");
-    listContainer.innerHTML = "Yükleniyor...";
+    listContainer.innerHTML = "<li>Yükleniyor...</li>";
     document.getElementById("leaderboard-modal").classList.remove("hidden");
 
-    // "duration" alanına göre en düşük saniyeli ilk 5 rekoru getirir
     const scoresRef = query(ref(database, "scores"), orderByChild("duration"), limitToFirst(5));
     get(scoresRef).then((snapshot) => {
         listContainer.innerHTML = "";
         if (!snapshot.exists()) {
-            listContainer.innerHTML = "Henüz rekor kırılmadı!";
+            listContainer.innerHTML = "<li>Henüz rekor kırılmadı!</li>";
             return;
         }
         let listItems = [];
         snapshot.forEach((childSnapshot) => {
             const data = childSnapshot.val();
-            const cleanEmail = data.email.split("@")[0]; // E-postanın ön ekini al
+            const cleanEmail = data.email ? data.email.split("@")[0] : "Bilinmeyen";
             listItems.push(`<li><strong>${cleanEmail}</strong>: ${data.duration} saniye</li>`);
         });
         listContainer.innerHTML = listItems.join("");
-    }).catch(err => console.log("Skor tablosu hatası:", err));
+    }).catch(err => {
+        console.log("Skor tablosu hatası:", err);
+        listContainer.innerHTML = "<li>Skorlar yüklenemedi.</li>";
+    });
 }
 
 function saveScore(duration) {
+    if(!userEmail) return;
     const scoresRef = ref(database, "scores");
     const newScoreRef = push(scoresRef);
     set(newScoreRef, {
@@ -162,7 +176,7 @@ function saveScore(duration) {
     });
 }
 
-// --- 4. KISIM: PIN KODLU ONLINE ODA MANTIĞI ---
+// --- PIN KODLU ONLINE ODA MANTIĞI (BUG 3 & 4 FİX) ---
 function createOnlineRoom() {
     const pin = document.getElementById("room-pin").value;
     if (pin.length !== 6 || isNaN(pin)) {
@@ -170,19 +184,27 @@ function createOnlineRoom() {
         return;
     }
 
-    gameMode = "online"; gameId = pin; myRole = "X"; isMyTurn = true;
+    // Üzerine yazma hatasını engellemek için önce odayı kontrol et
+    get(ref(database, `rooms/${pin}`)).then((snapshot) => {
+        if (snapshot.exists() && snapshot.val().status !== "finished") {
+            alert("Bu oda kodu zaten kullanımda! Lütfen başka bir kod girin.");
+            return;
+        }
 
-    set(ref(database, `rooms/${gameId}`), {
-        status: "waiting",
-        player1: userEmail,
-        player2: "",
-        board: ["", "", "", "", "", "", "", "", ""],
-        turn: "X"
-    }).then(() => {
-        statusTxt.innerText = `${gameId} nolu oda kuruldu. Rakip bekleniyor...`;
-        document.getElementById("menu").classList.add("hidden");
-        document.getElementById("reset-btn").classList.remove("hidden");
-        listenToRoom();
+        gameMode = "online"; gameId = pin; myRole = "X"; isMyTurn = true;
+
+        set(ref(database, `rooms/${gameId}`), {
+            status: "waiting",
+            player1: userEmail,
+            player2: "",
+            board: ["", "", "", "", "", "", "", "", ""],
+            turn: "X"
+        }).then(() => {
+            statusTxt.innerText = `${gameId} nolu oda kuruldu. Rakip bekleniyor...`;
+            menuBox.classList.add("hidden");
+            resetBtn.classList.remove("hidden");
+            listenToRoom();
+        });
     });
 }
 
@@ -197,30 +219,34 @@ function joinOnlineRoom() {
     get(ref(database, `rooms/${gameId}`)).then((snapshot) => {
         if (!snapshot.exists()) { alert("Oda bulunamadı!"); return; }
         const roomData = snapshot.val();
-        if (roomData.status !== "waiting") { alert("Oda zaten dolu!"); return; }
+        if (roomData.status !== "waiting") { alert("Oda zaten dolu veya oyun bitmiş!"); return; }
 
         update(ref(database, `rooms/${gameId}`), { 
             status: "playing", 
             player2: userEmail 
         }).then(() => {
             gameMode = "online";
-            document.getElementById("menu").classList.add("hidden");
-            document.getElementById("reset-btn").classList.remove("hidden");
+            menuBox.classList.add("hidden");
+            resetBtn.classList.remove("hidden");
             listenToRoom();
         });
     });
 }
 
 function listenToRoom() {
-    onValue(ref(database, `rooms/${gameId}`), (snapshot) => {
+    if (roomListenerUnsubscribe) roomListenerUnsubscribe(); // Eski dinleyici varsa temizle
+
+    const roomRef = ref(database, `rooms/${gameId}`);
+    roomListenerUnsubscribe = onValue(roomRef, (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
 
+        // Maç başladıysa
         if (data.status === "playing") {
             if (!gameActive) {
-                gameStartTime = Date.now(); // Tahta aktifleştiği an sayacı başlat
+                gameStartTime = Date.now(); 
             }
-            document.getElementById("game-board").classList.remove("hidden");
+            gameBoardBox.classList.remove("hidden");
             board = data.board;
             updateUI();
             
@@ -235,22 +261,37 @@ function listenToRoom() {
             }
             gameActive = true;
         }
+        
+        // Diğer oyuncu kazandıysa ve durumu Firebase'de bitirdiyse (Senkronizasyon)
+        if (data.status === "finished") {
+            board = data.board;
+            updateUI();
+            gameActive = false;
+            if (data.winner === myRole) {
+                // Zaten localde tetiklenmiştir
+            } else if (data.winner === "DRAW") {
+                statusTxt.innerText = "BERABERE!";
+            } else {
+                playBeep(220, "sawtooth");
+                statusTxt.innerText = `KAYBETTİN! Kazanan: ${data.winner}`;
+            }
+        }
     });
 }
 
-// --- 5. KISIM: OYUN MANTIĞI VE HAMLE KONTROLLERİ ---
+// --- OYUN MANTIĞI VE HAMLE KONTROLLERI ---
 function handleCellClick(cell) {
     const index = cell.getAttribute("data-index");
     if (board[index] !== "" || !gameActive || !isMyTurn) return;
 
-    playBeep(523, "sine"); // Oyuncu hamle tık sesi (Do notası)
+    playBeep(523, "sine"); 
 
     if (gameMode === "local") {
         board[index] = currentPlayer;
+        updateUI();
         if (checkWin()) return;
         currentPlayer = currentPlayer === "X" ? "O" : "X";
         statusTxt.innerText = `Sıra: OYUNCU ${currentPlayer}`;
-        updateUI();
     } 
     else if (gameMode === "ai") {
         board[index] = "X"; 
@@ -263,8 +304,14 @@ function handleCellClick(cell) {
     else if (gameMode === "online") {
         board[index] = myRole; 
         updateUI();
-        set(ref(database, `rooms/${gameId}/board`), board);
-        set(ref(database, `rooms/${gameId}/turn`), myRole === "X" ? "O" : "X");
+        isMyTurn = false;
+        
+        // Hamleyi gönder ve sırayı diğer oyuncuya devret
+        const nextTurn = myRole === "X" ? "O" : "X";
+        update(ref(database, `rooms/${gameId}`), {
+            board: board,
+            turn: nextTurn
+        });
         checkWin();
     }
 }
@@ -274,7 +321,7 @@ function aiMove() {
     if (emptyCells.length > 0 && gameActive) {
         let randomIdx = emptyCells[Math.floor(Math.random() * emptyCells.length)];
         board[randomIdx] = "O";
-        playBeep(392, "sine"); // Yapay zeka hamle tık sesi (Sol notası)
+        playBeep(392, "sine"); 
         updateUI();
         if (!checkWin()) { 
             isMyTurn = true; 
@@ -292,9 +339,9 @@ function updateUI() {
 
 function checkWin() {
     const winPatterns = [
-        [0,1,2], [3,4,5], [6,7,8], // Yataylar
-        [0,3,6], [1,4,7], [2,5,8], // Dikeyler
-        [0,4,8], [2,4,6]           // Çaprazlar
+        [0,1,2], [3,4,5], [6,7,8], 
+        [0,3,6], [1,4,7], [2,5,8], 
+        [0,4,8], [2,4,6]           
     ];
 
     for (let pattern of winPatterns) {
@@ -302,14 +349,18 @@ function checkWin() {
         if (board[a] && board[a] === board[b] && board[a] === board[c]) {
             gameActive = false;
             if (gameMode === "online") {
+                const durationInSeconds = Math.round((Date.now() - gameStartTime) / 1000);
+                // Maçı veri tabanında bitir (Diğer oyuncuya bilgi aktarımı)
+                update(ref(database, `rooms/${gameId}`), {
+                    status: "finished",
+                    winner: board[a],
+                    board: board
+                });
+
                 if (board[a] === myRole) {
-                    playBeep(880, "triangle"); // Kazanma jingle'ı
-                    const durationInSeconds = Math.round((Date.now() - gameStartTime) / 1000);
+                    playBeep(880, "triangle"); 
                     statusTxt.innerText = `KAZANDIN! (${durationInSeconds} Saniye)`;
-                    saveScore(durationInSeconds); // Skoru veri tabanına yaz
-                } else {
-                    playBeep(220, "sawtooth"); // Kaybetme kalın sesi
-                    statusTxt.innerText = "KAYBETTİN!";
+                    saveScore(durationInSeconds); 
                 }
             } else {
                 playBeep(659, "triangle");
@@ -322,19 +373,45 @@ function checkWin() {
     if (!board.includes("")) { 
         gameActive = false; 
         statusTxt.innerText = "BERABERE!"; 
+        if (gameMode === "online") {
+            update(ref(database, `rooms/${gameId}`), {
+                status: "finished",
+                winner: "DRAW",
+                board: board
+            });
+        }
         return true; 
     }
     return false;
 }
 
-function resetGame() {
-    if (gameMode === "online" && gameId) { 
+// --- MENÜYE GÜVENLİ DÖNÜŞ (BUG 1 KÖKTEN ÇÖZÜM) ---
+function returnToMenu() {
+    // Sayfayı yenilemeden tüm oyun statelerini ve UI sınıflarını temizle
+    gameActive = false;
+    board = ["", "", "", "", "", "", "", "", ""];
+    
+    if (gameMode === "online" && gameId && myRole === "X") { 
+        // Eğer odayı kuran kişiysek ve çıkıyorsak odayı temizle
         remove(ref(database, `rooms/${gameId}`)); 
     }
-    location.reload();
+    
+    if (roomListenerUnsubscribe) {
+        roomListenerUnsubscribe();
+        roomListenerUnsubscribe = null;
+    }
+
+    gameId = null;
+    gameMode = "";
+    
+    // UI Değişimi
+    gameBoardBox.classList.add("hidden");
+    resetBtn.classList.add("hidden");
+    menuBox.classList.remove("hidden");
+    statusTxt.innerText = `Hoş geldin, ${userEmail}`;
 }
 
-// --- 6. KISIM: PWA VE ZAMANLANMIŞ BİLDİRİMLER ---
+// --- PWA BİLDİRİMLERİ ---
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
         .then(() => console.log("PWA Service Worker Aktif."))
@@ -347,7 +424,6 @@ function startNotificationLoop() {
             if (permission === 'granted') {
                 navigator.serviceWorker.ready.then((registration) => {
                     if (registration.active) {
-                        // sw.js dosyasına 4 saat aralıklı 6 bildirimi planlaması emrini gönderir
                         registration.active.postMessage({ type: 'SCHEDULE_NOTIFICATIONS' });
                     }
                 });
@@ -355,3 +431,4 @@ function startNotificationLoop() {
         });
     }
 }
+
